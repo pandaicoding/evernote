@@ -1,0 +1,9 @@
+query Me{
+  me{
+    id
+    email
+    username
+    display_name
+    token_version
+  }
+}

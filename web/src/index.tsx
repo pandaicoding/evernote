@@ -3,14 +3,47 @@ import ReactDOM from 'react-dom';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { ApolloClient, ApolloLink, ApolloProvider, createHttpLink, InMemoryCache } from '@apollo/client';
+import { setContext } from '@apollo/client/link/context';
+import { getToken, isAuthenticated, saveToken } from './helper/auth';
+import { TokenRefreshLink } from 'apollo-link-token-refresh';
+
+export const EXPRESS_URL = process.env.REACT_APP_EXPRESS_URL;
+export const GRAPHQL_URL = `${EXPRESS_URL}/graphql`;
+export const GRAPHQL_TOKEN_URL = `${EXPRESS_URL}/refresh-token`;
+
+const refreshLink = new TokenRefreshLink({
+  accessTokenField: "access_token",
+  isTokenValidOrUndefined: () => isAuthenticated(),
+  fetchAccessToken: () => {
+    return fetch(GRAPHQL_TOKEN_URL, {
+      method: "POST",
+      credentials: "include",
+    });
+  },
+  handleFetch: (accessToken) => saveToken(accessToken),
+  handleError: (err) => {
+    console.warn("Your refresh token is invalid. Try to relogin");
+    console.error(err);
+  },
+});
 
 const httpLink = createHttpLink({
-  uri: 'http://localhost:4000/graphql',
+  uri: GRAPHQL_URL,
   credentials: 'include',
 });
 
+const authLink = setContext((_, { headers }) => {
+  const token = getToken()
+  return {
+    headers: {
+      ...headers,
+      authorization: token ? `Bearer ${token}` : '',
+    },
+  };
+})
+
 const client = new ApolloClient({
-  link: ApolloLink.from([httpLink]),
+  link: ApolloLink.from([refreshLink, authLink, httpLink]),
   cache: new InMemoryCache(),
 })
 

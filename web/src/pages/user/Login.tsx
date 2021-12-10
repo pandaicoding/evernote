@@ -4,9 +4,10 @@ import { Wrapper } from '../../components/Wrapper';
 import Penguin from '../../asset/icon/Penguin';
 import styled from '@emotion/styled';
 import { GENERICS } from '../../components/GlobalStyle';
-import { Link, RouterProps } from "react-router-dom";
+import { Link, Redirect, RouterProps } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
+import { isAuthenticated, saveToken } from "../../helper/auth";
 
 export default function Login({ history }: RouterProps) {
   const [form, setForm] = useState({
@@ -16,21 +17,25 @@ export default function Login({ history }: RouterProps) {
 
   const [submitLogin, { loading }] = useLoginMutation()
 
+  if (isAuthenticated()) {
+    return <Redirect to="/" />
+  }
+
   const onSubmitHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     try {
-      await submitLogin({
+      const data = await submitLogin({
         variables: {
           ...form,
         },
       })
+      saveToken(data.data?.login.access_token!)
       history.push("/")
     } catch (error: any) {
       toast(error.message, {
         type: "error",
       })
     }
-    console.log(form)
   }
   const onChangeHandler = (name: string) => ({ target }: ChangeEvent<HTMLInputElement>) => {
     setForm({
